@@ -37,14 +37,21 @@ $ cp .env.example .env
 Configuration is validated when the application starts. Invalid values fail fast
 instead of silently falling back at runtime.
 
-| Variable   | Required | Default       | Description                              |
-| ---------- | -------- | ------------- | ---------------------------------------- |
-| `NODE_ENV` | No       | `development` | `development`, `test`, or `production`   |
-| `HOST`     | No       | `0.0.0.0`     | Hostname or IP address the server binds  |
-| `PORT`     | No       | `3000`        | Valid TCP port used by the HTTP listener |
+| Variable    | Required | Default           | Description                              |
+| ----------- | -------- | ----------------- | ---------------------------------------- |
+| `NODE_ENV`  | No       | `development`     | `development`, `test`, or `production`   |
+| `HOST`      | No       | `0.0.0.0`         | Hostname or IP address the server binds  |
+| `PORT`      | No       | `3000`            | Valid TCP port used by the HTTP listener |
+| `LOG_LEVEL` | No       | Environment-based | Minimum application log level            |
 
 Keep local values in `.env`. Environment files are ignored by Git; only
 `.env.example` should be committed, and it must never contain real secrets.
+
+Logs are human-readable in development and structured JSON in production.
+Every HTTP response includes `X-Request-Id`; a valid incoming request ID is
+preserved to support tracing across services. Authorization, cookie, API key,
+and set-cookie values are redacted from logs; query parameters are omitted to
+reduce accidental PII or token exposure.
 
 ## Compile and run the project
 

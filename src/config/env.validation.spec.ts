@@ -22,10 +22,15 @@ describe('environment validation', () => {
 
   it('reports all invalid known variables at once', () => {
     const { error } = envValidationSchema.validate(
-      { NODE_ENV: 'staging', HOST: 'bad host', PORT: 'not-a-port' },
+      {
+        NODE_ENV: 'staging',
+        HOST: 'bad host',
+        PORT: 'not-a-port',
+        LOG_LEVEL: 'everything',
+      },
       validationOptions,
     );
 
-    expect(error?.details).toHaveLength(3);
+    expect(error?.details).toHaveLength(4);
   });
 });
