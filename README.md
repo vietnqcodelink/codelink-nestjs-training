@@ -29,7 +29,22 @@
 
 ```bash
 $ npm install
+$ cp .env.example .env
 ```
+
+## Environment configuration
+
+Configuration is validated when the application starts. Invalid values fail fast
+instead of silently falling back at runtime.
+
+| Variable   | Required | Default       | Description                              |
+| ---------- | -------- | ------------- | ---------------------------------------- |
+| `NODE_ENV` | No       | `development` | `development`, `test`, or `production`   |
+| `HOST`     | No       | `0.0.0.0`     | Hostname or IP address the server binds  |
+| `PORT`     | No       | `3000`        | Valid TCP port used by the HTTP listener |
+
+Keep local values in `.env`. Environment files are ignored by Git; only
+`.env.example` should be committed, and it must never contain real secrets.
 
 ## Compile and run the project
 
