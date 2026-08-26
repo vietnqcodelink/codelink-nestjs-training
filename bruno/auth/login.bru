@@ -1,0 +1,46 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "email": "test1@gmail.com",
+    "password": "12345678901234567890"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body?.accessToken) {
+    bru.setEnvVar("accessToken", res.body.accessToken);
+  }
+}
+
+tests {
+  test("authenticates successfully", function() {
+    expect(res.status).to.equal(200);
+  });
+  
+  test("returns an access token", function() {
+    expect(res.body.accessToken).to.be.a("string").and.not.empty;
+  });
+  
+  test("does not expose the password hash", function() {
+    expect(res.body.user).not.to.have.property("passwordHash");
+  });
+  
+  test("does not allow the token response to be cached", function() {
+    expect(res.getHeader("cache-control")).to.equal("no-store");
+  });
+}

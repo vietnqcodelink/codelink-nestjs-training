@@ -3,6 +3,7 @@ import { ConfigModule, type ConfigType } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { appConfig } from './config/app.config';
 import { envValidationSchema } from './config/env.validation';
 import { loggerConfig } from './config/logger.config';
@@ -25,6 +26,7 @@ import { PrismaModule } from './prisma/prisma.module';
       }),
     }),
     PrismaModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

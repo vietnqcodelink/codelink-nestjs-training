@@ -1,0 +1,42 @@
+meta {
+  name: Register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/register
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "email": "test1@gmail.com",
+    "password": "12345678901234567890"
+  }
+}
+
+tests {
+  test("creates the account or reports that it already exists", function() {
+    expect([201, 409]).to.include(res.status);
+  });
+  
+  test("does not expose the password hash", function() {
+    if (res.status === 201) {
+      expect(res.body.user).not.to.have.property("passwordHash");
+    } else {
+      expect(res.body).not.to.have.property("passwordHash");
+    }
+  });
+  
+  test("does not allow successful responses to be cached", function() {
+    if (res.status === 201) {
+      expect(res.getHeader("cache-control")).to.equal("no-store");
+    }
+  });
+}

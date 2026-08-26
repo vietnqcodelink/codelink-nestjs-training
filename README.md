@@ -47,6 +47,8 @@ instead of silently falling back at runtime.
 | `DIRECT_URL`                     | No       | —                 | Direct URL for migrations when using a pooler |
 | `DATABASE_POOL_MAX`              | No       | `10`              | Connections per application instance          |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | No       | `5000`            | Pool/client connection timeout                |
+| `JWT_SECRET`                     | Yes      | —                  | Secret used to sign access tokens (32+ chars) |
+| `JWT_ACCESS_TOKEN_TTL_SECONDS`   | No       | `900`              | Access-token lifetime in seconds               |
 
 Keep local values in `.env`. Environment files are ignored by Git; only
 `.env.example` should be committed, and it must never contain real secrets.
@@ -91,6 +93,50 @@ $ npm run prisma:migrate:deploy
 The Compose file is intended for local/development infrastructure. Production
 credentials must come from a secret manager or Docker secrets, and production
 PostgreSQL also needs an explicit backup/restore and monitoring policy.
+
+## Authentication
+
+The API supports email/password registration and login:
+
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "a sufficiently long password"
+}
+```
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "a sufficiently long password"
+}
+```
+
+Both endpoints return a short-lived bearer access token and a safe user object.
+Passwords are hashed with Argon2id and are never returned by the API. The local
+auth rate limiter is per application instance; use a shared gateway or storage
+when enforcing limits across multiple replicas. JWT secrets must come from a
+secret manager in production.
+
+### Bruno collection
+
+Start the API, open the `bruno` directory as a collection in Bruno, select the
+`local` environment, then run the collection or the `auth` folder. Register is
+safe to run repeatedly; an existing local account returns `409`, after which the
+login request reuses the same credentials and keeps the access token in memory.
+
+With Bruno CLI installed, the auth requests can also be run with:
+
+```bash
+$ cd bruno
+$ bru run auth --env local
+```
 
 ## Compile and run the project
 
