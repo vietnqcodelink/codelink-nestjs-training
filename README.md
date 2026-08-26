@@ -37,12 +37,16 @@ $ cp .env.example .env
 Configuration is validated when the application starts. Invalid values fail fast
 instead of silently falling back at runtime.
 
-| Variable    | Required | Default           | Description                              |
-| ----------- | -------- | ----------------- | ---------------------------------------- |
-| `NODE_ENV`  | No       | `development`     | `development`, `test`, or `production`   |
-| `HOST`      | No       | `0.0.0.0`         | Hostname or IP address the server binds  |
-| `PORT`      | No       | `3000`            | Valid TCP port used by the HTTP listener |
-| `LOG_LEVEL` | No       | Environment-based | Minimum application log level            |
+| Variable                         | Required | Default           | Description                                   |
+| -------------------------------- | -------- | ----------------- | --------------------------------------------- |
+| `NODE_ENV`                       | No       | `development`     | `development`, `test`, or `production`        |
+| `HOST`                           | No       | `0.0.0.0`         | Hostname or IP address the server binds       |
+| `PORT`                           | No       | `3000`            | Valid TCP port used by the HTTP listener      |
+| `LOG_LEVEL`                      | No       | Environment-based | Minimum application log level                 |
+| `DATABASE_URL`                   | Yes      | —                 | PostgreSQL runtime connection URL             |
+| `DIRECT_URL`                     | No       | —                 | Direct URL for migrations when using a pooler |
+| `DATABASE_POOL_MAX`              | No       | `10`              | Connections per application instance          |
+| `DATABASE_CONNECTION_TIMEOUT_MS` | No       | `5000`            | Pool/client connection timeout                |
 
 Keep local values in `.env`. Environment files are ignored by Git; only
 `.env.example` should be committed, and it must never contain real secrets.
@@ -52,6 +56,41 @@ Every HTTP response includes `X-Request-Id`; a valid incoming request ID is
 preserved to support tracing across services. Authorization, cookie, API key,
 and set-cookie values are redacted from logs; query parameters are omitted to
 reduce accidental PII or token exposure.
+
+## Database
+
+Start the local PostgreSQL infrastructure after copying `.env.example`:
+
+```bash
+$ npm run infra:up
+
+# stop containers without deleting database data
+$ npm run infra:down
+```
+
+The database is exposed only on host loopback (`127.0.0.1`), persists in a
+named Docker volume, and reports readiness through a healthcheck. To remove all
+local data intentionally, run `docker compose down -v`.
+
+Prisma uses `DATABASE_URL` at runtime. In production, use a dedicated
+least-privilege application user and require TLS (for example,
+`?sslmode=require`). If the runtime URL points to PgBouncer or another pooler,
+set `DIRECT_URL` to a direct PostgreSQL connection for migrations.
+
+```bash
+# after editing prisma/schema.prisma
+$ npm run prisma:migrate:dev -- --name describe_change
+
+# deployment/release step; never run migrate dev in production
+$ npm run prisma:migrate:deploy
+```
+
+`DATABASE_POOL_MAX` applies to each application instance. Keep the total
+(`pool max × instance count`) within the database connection budget.
+
+The Compose file is intended for local/development infrastructure. Production
+credentials must come from a secret manager or Docker secrets, and production
+PostgreSQL also needs an explicit backup/restore and monitoring policy.
 
 ## Compile and run the project
 

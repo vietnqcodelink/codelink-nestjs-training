@@ -7,6 +7,7 @@ import { appConfig } from './config/app.config';
 import { envValidationSchema } from './config/env.validation';
 import { loggerConfig } from './config/logger.config';
 import { createPinoHttpOptions } from './logger/logger.options';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { createPinoHttpOptions } from './logger/logger.options';
         pinoHttp: createPinoHttpOptions(config),
       }),
     }),
+    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

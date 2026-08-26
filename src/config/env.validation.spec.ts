@@ -5,7 +5,11 @@ const validationOptions = { abortEarly: false, allowUnknown: true };
 describe('environment validation', () => {
   it('applies safe defaults and converts the port to a number', () => {
     const result = envValidationSchema.validate(
-      { PORT: '8080' },
+      {
+        PORT: '8080',
+        DATABASE_URL:
+          'postgresql://app:password@localhost:5432/student_management',
+      },
       validationOptions,
     );
 
@@ -17,6 +21,8 @@ describe('environment validation', () => {
       NODE_ENV: 'development',
       HOST: '0.0.0.0',
       PORT: 8080,
+      DATABASE_POOL_MAX: 10,
+      DATABASE_CONNECTION_TIMEOUT_MS: 5000,
     });
   });
 
@@ -27,10 +33,11 @@ describe('environment validation', () => {
         HOST: 'bad host',
         PORT: 'not-a-port',
         LOG_LEVEL: 'everything',
+        DATABASE_URL: 'mysql://localhost/database',
       },
       validationOptions,
     );
 
-    expect(error?.details).toHaveLength(4);
+    expect(error?.details).toHaveLength(5);
   });
 });

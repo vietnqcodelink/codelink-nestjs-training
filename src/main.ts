@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
+  app.enableShutdownHooks();
 
   const { host, port } = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
 
