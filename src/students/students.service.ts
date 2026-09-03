@@ -4,12 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { SortOrder } from '../common/dto/sort-order';
 import { createPaginationMeta } from '../common/pagination';
 import { Prisma } from '../generated/prisma/client';
 import { isPrismaError } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateStudentDto } from './dto/create-student.dto';
+import {
+  type ListStudentsQueryDto,
+  StudentSortField,
+} from './dto/list-students-query.dto';
 import type { UpdateStudentDto } from './dto/update-student.dto';
 import { STUDENT_SELECT, type StudentResponse } from './student.select';
 import type { PaginatedStudents } from './students.types';
@@ -37,16 +41,31 @@ export class StudentsService {
     }
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedStudents> {
-    const { page, limit } = query;
+  async findAll(query: ListStudentsQueryDto): Promise<PaginatedStudents> {
+    const { page, limit, courseId, search } = query;
+    const sortBy = query.sortBy ?? StudentSortField.CREATED_AT;
+    const sortOrder = query.sortOrder ?? SortOrder.DESC;
+    const where: Prisma.StudentWhereInput = {
+      ...(courseId ? { enrollments: { some: { courseId } } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
     const [data, total] = await this.prisma.$transaction([
       this.prisma.student.findMany({
+        where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ [sortBy]: sortOrder }, { id: sortOrder }],
         select: STUDENT_SELECT,
       }),
-      this.prisma.student.count(),
+      this.prisma.student.count({ where }),
     ]);
 
     return {

@@ -3,10 +3,12 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { SortOrder } from '../common/dto/sort-order';
 import { Prisma } from '../generated/prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { CourseResponse } from './course.select';
 import { CoursesService } from './courses.service';
+import { CourseSortField } from './dto/list-courses-query.dto';
 
 describe('CoursesService', () => {
   const course: CourseResponse = {
@@ -83,6 +85,38 @@ describe('CoursesService', () => {
       data: [course],
       meta: { page: 2, limit: 10, total: 21, totalPages: 3 },
     });
+    expect(findManyCourses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      }),
+    );
+    expect(countCourses).toHaveBeenCalledWith({ where: {} });
+  });
+
+  it('searches courses and applies a validated sort', async () => {
+    findManyCourses.mockResolvedValue([course]);
+    countCourses.mockResolvedValue(1);
+
+    await service.findAll({
+      page: 1,
+      limit: 20,
+      search: 'CS',
+      sortBy: CourseSortField.CODE,
+      sortOrder: SortOrder.ASC,
+    });
+
+    expect(findManyCourses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { name: { contains: 'CS', mode: 'insensitive' } },
+            { code: { contains: 'CS', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: [{ code: 'asc' }, { id: 'asc' }],
+      }),
+    );
   });
 
   it('returns not found for an unknown course', async () => {

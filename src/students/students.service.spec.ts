@@ -3,8 +3,10 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { SortOrder } from '../common/dto/sort-order';
 import { Prisma } from '../generated/prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
+import { StudentSortField } from './dto/list-students-query.dto';
 import type { StudentResponse } from './student.select';
 import { StudentsService } from './students.service';
 
@@ -94,9 +96,54 @@ describe('StudentsService', () => {
       expect.objectContaining({
         skip: 10,
         take: 10,
+        where: {},
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
     );
+    expect(countStudents).toHaveBeenCalledWith({ where: {} });
+  });
+
+  it('searches students and applies a validated sort', async () => {
+    findManyStudents.mockResolvedValue([student]);
+    countStudents.mockResolvedValue(1);
+
+    await service.findAll({
+      page: 1,
+      limit: 20,
+      search: 'Jane',
+      sortBy: StudentSortField.NAME,
+      sortOrder: SortOrder.ASC,
+    });
+
+    expect(findManyStudents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { name: { contains: 'Jane', mode: 'insensitive' } },
+            { email: { contains: 'Jane', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      }),
+    );
+  });
+
+  it('filters data and pagination total by course enrollment', async () => {
+    const courseId = '16a64c89-2ae6-460a-bf93-ff2121c59927';
+    const where = { enrollments: { some: { courseId } } };
+    findManyStudents.mockResolvedValue([student]);
+    countStudents.mockResolvedValue(1);
+
+    await expect(
+      service.findAll({ page: 1, limit: 20, courseId }),
+    ).resolves.toEqual({
+      data: [student],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    expect(findManyStudents).toHaveBeenCalledWith(
+      expect.objectContaining({ where }),
+    );
+    expect(countStudents).toHaveBeenCalledWith({ where });
   });
 
   it('returns not found for an unknown student', async () => {

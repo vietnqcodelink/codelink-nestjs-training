@@ -23,7 +23,6 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { SWAGGER_BEARER_AUTH } from '../common/swagger';
 import { RequirePermissions } from '../rbac/permissions.decorator';
 import { PERMISSION } from '../rbac/rbac.constants';
@@ -35,6 +34,7 @@ import {
   PaginatedCoursesResponseDto,
 } from './dto/course-response.dto';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { ListCoursesQueryDto } from './dto/list-courses-query.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 
 @ApiTags('Courses')
@@ -57,7 +57,7 @@ export class CoursesController {
   @Get()
   @ApiOperation({ summary: 'List courses' })
   @ApiOkResponse({ type: PaginatedCoursesResponseDto })
-  findAll(@Query() query: PaginationQueryDto): Promise<PaginatedCourses> {
+  findAll(@Query() query: ListCoursesQueryDto): Promise<PaginatedCourses> {
     return this.coursesService.findAll(query);
   }
 

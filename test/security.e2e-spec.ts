@@ -116,6 +116,22 @@ describe('Route protection (e2e)', () => {
   });
 
   it.each([
+    '/students?sortBy=passwordHash',
+    '/students?courseId=not-a-uuid',
+    '/courses?sortOrder=sideways',
+  ])('rejects invalid list query parameters for %s', async (path) => {
+    grantedPermissionCount = 1;
+    const token = await jwtService.signAsync({
+      sub: '4d26ed6a-1f21-4df2-98cf-b79b7e214d0f',
+    });
+
+    await request(app.getHttpServer())
+      .get(path)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+  });
+
+  it.each([
     ['GET', '/students'],
     ['POST', '/students'],
     ['GET', '/courses'],

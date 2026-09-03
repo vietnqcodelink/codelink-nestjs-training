@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { SortOrder } from '../common/dto/sort-order';
 import { createPaginationMeta } from '../common/pagination';
 import { Prisma } from '../generated/prisma/client';
 import { isPrismaError } from '../prisma/prisma-errors';
@@ -12,6 +12,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { COURSE_SELECT, type CourseResponse } from './course.select';
 import type { PaginatedCourses } from './courses.types';
 import type { CreateCourseDto } from './dto/create-course.dto';
+import {
+  CourseSortField,
+  type ListCoursesQueryDto,
+} from './dto/list-courses-query.dto';
 import type { UpdateCourseDto } from './dto/update-course.dto';
 
 const COURSE_NOT_FOUND_MESSAGE = 'Course not found';
@@ -36,16 +40,28 @@ export class CoursesService {
     }
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedCourses> {
-    const { page, limit } = query;
+  async findAll(query: ListCoursesQueryDto): Promise<PaginatedCourses> {
+    const { page, limit, search } = query;
+    const sortBy = query.sortBy ?? CourseSortField.CREATED_AT;
+    const sortOrder = query.sortOrder ?? SortOrder.DESC;
+    const where: Prisma.CourseWhereInput = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
     const [data, total] = await this.prisma.$transaction([
       this.prisma.course.findMany({
+        where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ [sortBy]: sortOrder }, { id: sortOrder }],
         select: COURSE_SELECT,
       }),
-      this.prisma.course.count(),
+      this.prisma.course.count({ where }),
     ]);
 
     return {

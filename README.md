@@ -188,17 +188,26 @@ create a `UserRole` connecting the user to the seeded `ADMIN` role.
 
 The API exposes a focused CRUD resource for students:
 
-| Method   | Path            | Description                         |
-| -------- | --------------- | ----------------------------------- |
-| `POST`   | `/students`     | Create a student (`student:create`) |
-| `GET`    | `/students`     | List students (`student:read`)      |
-| `GET`    | `/students/:id` | Get one student (`student:read`)    |
-| `PATCH`  | `/students/:id` | Update a student (`student:update`) |
-| `DELETE` | `/students/:id` | Delete a student (`student:delete`) |
+| Method   | Path            | Description                               |
+| -------- | --------------- | ----------------------------------------- |
+| `POST`   | `/students`     | Create a student (`student:create`)       |
+| `GET`    | `/students`     | Paginate/filter students (`student:read`) |
+| `GET`    | `/students/:id` | Get one student (`student:read`)          |
+| `PATCH`  | `/students/:id` | Update a student (`student:update`)       |
+| `DELETE` | `/students/:id` | Delete a student (`student:delete`)       |
 
 `page` defaults to `1`; `limit` defaults to `20` and is capped at `100`.
 Student emails are normalized to lowercase and must be unique. Dates of birth
 use the `YYYY-MM-DD` format and cannot be in the future.
+
+Student lists support case-insensitive `search` across name and email, sorting
+by `name`, `email`, `dateOfBirth`, or `createdAt`, and filtering by `courseId`.
+An unknown course ID returns an empty page, which is the normal behavior for a
+list filter:
+
+```http
+GET /students?page=1&limit=20&search=jane&courseId=16a64c89-2ae6-460a-bf93-ff2121c59927&sortBy=name&sortOrder=asc
+```
 
 ## Courses and enrollments API
 
@@ -212,6 +221,13 @@ use the `YYYY-MM-DD` format and cannot be in the future.
 
 Course codes are normalized to uppercase and must be unique. Deleting a course
 also removes its enrollments through the database relation.
+
+Course lists support case-insensitive `search` across name and code, and sorting
+by `name`, `code`, or `createdAt`:
+
+```http
+GET /courses?page=1&limit=20&search=computer&sortBy=code&sortOrder=asc
+```
 
 | Method   | Path                           | Description                             |
 | -------- | ------------------------------ | --------------------------------------- |

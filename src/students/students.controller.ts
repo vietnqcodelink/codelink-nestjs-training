@@ -23,11 +23,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { SWAGGER_BEARER_AUTH } from '../common/swagger';
 import { RequirePermissions } from '../rbac/permissions.decorator';
 import { PERMISSION } from '../rbac/rbac.constants';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { ListStudentsQueryDto } from './dto/list-students-query.dto';
 import {
   PaginatedStudentsResponseDto,
   StudentResponseDto,
@@ -59,7 +59,7 @@ export class StudentsController {
   @ApiOperation({ summary: 'List students' })
   @ApiOkResponse({ type: PaginatedStudentsResponseDto })
   @ApiForbiddenResponse({ description: 'student:read permission required' })
-  findAll(@Query() query: PaginationQueryDto): Promise<PaginatedStudents> {
+  findAll(@Query() query: ListStudentsQueryDto): Promise<PaginatedStudents> {
     return this.studentsService.findAll(query);
   }
 
