@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -17,17 +18,27 @@ import {
 
 @Injectable()
 export class EnrollmentsService {
+  private readonly logger = new Logger(EnrollmentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateEnrollmentDto): Promise<EnrollmentResponse> {
     try {
-      return await this.prisma.enrollment.create({
+      const enrollment = await this.prisma.enrollment.create({
         data: {
           studentId: dto.studentId,
           courseId: dto.courseId,
         },
         select: ENROLLMENT_SELECT,
       });
+
+      this.logger.log({
+        event: 'enrollment.created',
+        enrollmentId: enrollment.id,
+        studentId: enrollment.studentId,
+        courseId: enrollment.courseId,
+      });
+      return enrollment;
     } catch (error: unknown) {
       this.handleWriteError(error);
     }
@@ -65,6 +76,7 @@ export class EnrollmentsService {
   async remove(id: string): Promise<void> {
     try {
       await this.prisma.enrollment.delete({ where: { id } });
+      this.logger.log({ event: 'enrollment.deleted', enrollmentId: id });
     } catch (error: unknown) {
       this.handleWriteError(error);
     }

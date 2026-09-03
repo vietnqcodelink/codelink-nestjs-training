@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, type ConfigType } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { appConfig } from './config/app.config';
 import { envValidationSchema } from './config/env.validation';
 import { loggerConfig } from './config/logger.config';
@@ -37,6 +39,9 @@ import { StudentsModule } from './students/students.module';
     RbacModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: ApiExceptionFilter },
+  ],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { CourseResponse } from '../courses/course.select';
 import { Prisma } from '../generated/prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -34,9 +34,15 @@ describe('EnrollmentsService', () => {
     student: { findUnique: findStudent },
   } as unknown as PrismaService;
   const service = new EnrollmentsService(prisma);
+  let logSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
   });
 
   it('creates an enrollment', async () => {
@@ -45,6 +51,12 @@ describe('EnrollmentsService', () => {
     await expect(
       service.create({ studentId, courseId: course.id }),
     ).resolves.toEqual(enrollment);
+    expect(logSpy).toHaveBeenCalledWith({
+      event: 'enrollment.created',
+      enrollmentId: enrollment.id,
+      studentId,
+      courseId: course.id,
+    });
   });
 
   it('rejects duplicate enrollments', async () => {
@@ -93,5 +105,17 @@ describe('EnrollmentsService', () => {
     await expect(
       service.create({ studentId, courseId: course.id }),
     ).rejects.toBeInstanceOf(NotFoundException);
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs a successful enrollment removal', async () => {
+    deleteEnrollment.mockResolvedValue(enrollment);
+
+    await service.remove(enrollment.id);
+
+    expect(logSpy).toHaveBeenCalledWith({
+      event: 'enrollment.deleted',
+      enrollmentId: enrollment.id,
+    });
   });
 });

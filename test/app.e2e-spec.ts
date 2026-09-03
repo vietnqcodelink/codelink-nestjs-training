@@ -140,7 +140,12 @@ describe('AppController (e2e)', () => {
         password: 'short',
         role: 'admin',
       })
-      .expect(400);
+      .expect(400)
+      .expect(({ body }: { body: Record<string, unknown> }) => {
+        expect(Object.keys(body).sort()).toEqual(['message', 'statusCode']);
+        expect(body.statusCode).toBe(400);
+        expect(typeof body.message).toBe('string');
+      });
   });
 
   afterEach(async () => {
