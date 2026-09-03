@@ -127,6 +127,13 @@ auth rate limiter is per application instance; use a shared gateway or storage
 when enforcing limits across multiple replicas. JWT secrets must come from a
 secret manager in production.
 
+New accounts receive the built-in `USER` role. The public registration API
+intentionally does not accept roles, so clients cannot grant themselves access.
+JWTs contain only the user identity; roles and permissions are resolved from the
+database for endpoints that require authorization. Assignment changes therefore
+take effect immediately without issuing a new token, while ordinary authenticated
+routes avoid the additional database lookup.
+
 All Student, Course, and Enrollment endpoints require the access token:
 
 ```http
@@ -135,17 +142,59 @@ Authorization: Bearer <access-token>
 
 Missing, malformed, invalid, or expired tokens return `401 Unauthorized`.
 
+## Authorization (RBAC)
+
+Authorization uses database-backed many-to-many relationships:
+
+```text
+User ──< UserRole >── Role ──< RolePermission >── Permission
+```
+
+The migration creates immutable `USER` and `ADMIN` system roles and the
+application permission catalog. `ADMIN` initially receives all permissions;
+`USER` has none. Course write operations require `course:create`,
+`course:update`, or `course:delete`; Student operations require the matching
+`student:create`, `student:read`, `student:update`, or `student:delete`
+permission; and Enrollment operations require `enrollment:create`,
+`enrollment:read`, or `enrollment:delete`. RBAC management requires
+`rbac:manage`.
+
+Permission keys are owned by application code and migrations because a key is
+useful only when an endpoint enforces it. Administrators can create custom roles
+and assign catalog permissions, but cannot create arbitrary permission keys or
+modify/delete system roles.
+
+| Method   | Path                          | Description                         |
+| -------- | ----------------------------- | ----------------------------------- |
+| `GET`    | `/rbac/roles`                 | List roles and permissions          |
+| `POST`   | `/rbac/roles`                 | Create a custom role                |
+| `PATCH`  | `/rbac/roles/:id`             | Update a custom role                |
+| `DELETE` | `/rbac/roles/:id`             | Delete an unused custom role        |
+| `GET`    | `/rbac/permissions`           | List the permission catalog         |
+| `PUT`    | `/rbac/roles/:id/permissions` | Replace a custom role's permissions |
+| `GET`    | `/rbac/users/:userId/roles`   | List roles assigned to a user       |
+| `PUT`    | `/rbac/users/:userId/roles`   | Replace roles assigned to a user    |
+
+Role and permission replacement is transactional. Duplicate assignments are
+prevented by composite primary keys, assigned roles cannot be deleted, and the
+last administrator cannot be demoted.
+
+The first administrator must be provisioned out of band after registering the
+account, for example through a controlled database operation or Prisma Studio.
+There is deliberately no public “become admin” endpoint. In local development,
+create a `UserRole` connecting the user to the seeded `ADMIN` role.
+
 ## Students API
 
 The API exposes a focused CRUD resource for students:
 
-| Method   | Path            | Description                            |
-| -------- | --------------- | -------------------------------------- |
-| `POST`   | `/students`     | Create a student                       |
-| `GET`    | `/students`     | List students using `page` and `limit` |
-| `GET`    | `/students/:id` | Get one student                        |
-| `PATCH`  | `/students/:id` | Update one or more student fields      |
-| `DELETE` | `/students/:id` | Delete a student                       |
+| Method   | Path            | Description                         |
+| -------- | --------------- | ----------------------------------- |
+| `POST`   | `/students`     | Create a student (`student:create`) |
+| `GET`    | `/students`     | List students (`student:read`)      |
+| `GET`    | `/students/:id` | Get one student (`student:read`)    |
+| `PATCH`  | `/students/:id` | Update a student (`student:update`) |
+| `DELETE` | `/students/:id` | Delete a student (`student:delete`) |
 
 `page` defaults to `1`; `limit` defaults to `20` and is capped at `100`.
 Student emails are normalized to lowercase and must be unique. Dates of birth
@@ -155,20 +204,20 @@ use the `YYYY-MM-DD` format and cannot be in the future.
 
 | Method   | Path           | Description                       |
 | -------- | -------------- | --------------------------------- |
-| `POST`   | `/courses`     | Create a course                   |
+| `POST`   | `/courses`     | Create a course (`course:create`) |
 | `GET`    | `/courses`     | List courses using page and limit |
 | `GET`    | `/courses/:id` | Get one course                    |
-| `PATCH`  | `/courses/:id` | Update one or more course fields  |
-| `DELETE` | `/courses/:id` | Delete a course                   |
+| `PATCH`  | `/courses/:id` | Update a course (`course:update`) |
+| `DELETE` | `/courses/:id` | Delete a course (`course:delete`) |
 
 Course codes are normalized to uppercase and must be unique. Deleting a course
 also removes its enrollments through the database relation.
 
-| Method   | Path                           | Description                   |
-| -------- | ------------------------------ | ----------------------------- |
-| `POST`   | `/enrollments`                 | Enroll a student in a course  |
-| `GET`    | `/students/:studentId/courses` | List all courses of a student |
-| `DELETE` | `/enrollments/:id`             | Remove an enrollment          |
+| Method   | Path                           | Description                             |
+| -------- | ------------------------------ | --------------------------------------- |
+| `POST`   | `/enrollments`                 | Enroll a student (`enrollment:create`)  |
+| `GET`    | `/students/:studentId/courses` | List courses (`enrollment:read`)        |
+| `DELETE` | `/enrollments/:id`             | Remove enrollment (`enrollment:delete`) |
 
 Duplicate enrollments return `409 Conflict`. Unknown students, courses, or
 enrollments return `404 Not Found`.
@@ -183,12 +232,21 @@ JWT bearer token for protected endpoints.
 
 Start the API, open the `bruno` directory as a collection in Bruno, select the
 `local` environment, then run the collection, the `auth` folder, or the
-`students` folder, or the `courses-enrollments` folder. Run Authentication first
+`students`, `courses-enrollments`, or `rbac` folder. Run Authentication first
 when executing an individual protected folder. The complete collection handles
-that ordering and removes its Student, Course, and Enrollment test records.
+that ordering and removes its Student, Course, Enrollment, and custom Role test
+records.
 Register is safe to run repeatedly; an existing local account returns `409`,
 after which login reuses the same credentials and keeps the access token only
 for the current Bruno runtime.
+
+The Student, Course write, and Enrollment requests require the
+`bruno.local@example.com` account to have a role containing the corresponding
+permissions. For local testing, assign the seeded `ADMIN` role to that account
+before running those folders.
+The RBAC folder also requires `rbac:manage`. It reuses a dedicated target user,
+assigns a temporary custom role, restores the target to `USER`, and then deletes
+the temporary role.
 
 With Bruno CLI installed, the auth requests can also be run with:
 

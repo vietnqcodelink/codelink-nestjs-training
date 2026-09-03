@@ -15,6 +15,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -24,6 +25,8 @@ import {
 } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { SWAGGER_BEARER_AUTH } from '../common/swagger';
+import { RequirePermissions } from '../rbac/permissions.decorator';
+import { PERMISSION } from '../rbac/rbac.constants';
 import type { CourseResponse } from './course.select';
 import { CoursesService } from './courses.service';
 import type { PaginatedCourses } from './courses.types';
@@ -42,9 +45,11 @@ export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
   @Post()
+  @RequirePermissions(PERMISSION.COURSE_CREATE)
   @ApiOperation({ summary: 'Create a course' })
   @ApiCreatedResponse({ type: CourseResponseDto })
   @ApiConflictResponse({ description: 'Course code already exists' })
+  @ApiForbiddenResponse({ description: 'course:create permission required' })
   create(@Body() dto: CreateCourseDto): Promise<CourseResponse> {
     return this.coursesService.create(dto);
   }
@@ -67,10 +72,12 @@ export class CoursesController {
   }
 
   @Patch(':id')
+  @RequirePermissions(PERMISSION.COURSE_UPDATE)
   @ApiOperation({ summary: 'Update a course' })
   @ApiOkResponse({ type: CourseResponseDto })
   @ApiNotFoundResponse({ description: 'Course not found' })
   @ApiConflictResponse({ description: 'Course code already exists' })
+  @ApiForbiddenResponse({ description: 'course:update permission required' })
   update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() dto: UpdateCourseDto,
@@ -79,10 +86,12 @@ export class CoursesController {
   }
 
   @Delete(':id')
+  @RequirePermissions(PERMISSION.COURSE_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a course' })
   @ApiNoContentResponse({ description: 'Course deleted' })
   @ApiNotFoundResponse({ description: 'Course not found' })
+  @ApiForbiddenResponse({ description: 'course:delete permission required' })
   remove(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<void> {

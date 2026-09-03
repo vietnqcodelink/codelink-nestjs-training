@@ -11,6 +11,7 @@ import { CoursesModule } from './courses/courses.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { createPinoHttpOptions } from './logger/logger.options';
 import { PrismaModule } from './prisma/prisma.module';
+import { RbacModule } from './rbac/rbac.module';
 import { StudentsModule } from './students/students.module';
 
 @Module({
@@ -33,6 +34,7 @@ import { StudentsModule } from './students/students.module';
     StudentsModule,
     CoursesModule,
     EnrollmentsModule,
+    RbacModule,
   ],
   controllers: [AppController],
   providers: [AppService],

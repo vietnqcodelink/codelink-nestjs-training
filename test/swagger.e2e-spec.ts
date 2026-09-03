@@ -43,6 +43,11 @@ describe('OpenAPI document (e2e)', () => {
         '/enrollments',
         '/enrollments/{id}',
         '/students/{studentId}/courses',
+        '/rbac/roles',
+        '/rbac/roles/{id}',
+        '/rbac/permissions',
+        '/rbac/roles/{id}/permissions',
+        '/rbac/users/{userId}/roles',
       ]),
     );
     expect(document.components?.securitySchemes).toHaveProperty('access-token');

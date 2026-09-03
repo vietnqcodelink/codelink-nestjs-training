@@ -1,0 +1,26 @@
+meta {
+  name: Get user roles
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/rbac/users/{{rbacTargetUserId}}/roles
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("returns the roles assigned to the target user", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.userId).to.equal(bru.getVar("rbacTargetUserId"));
+
+    const roleNames = res.body.roles.map((role) => role.name);
+    expect(roleNames).to.include("USER");
+    expect(roleNames).to.include(bru.getVar("rbacRoleName"));
+  });
+}

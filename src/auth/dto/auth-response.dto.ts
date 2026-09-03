@@ -7,6 +7,9 @@ export class AuthenticatedUserResponseDto {
   @ApiProperty({ format: 'email' })
   email!: string;
 
+  @ApiProperty({ type: [String], example: ['USER'] })
+  roles!: string[];
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;
 

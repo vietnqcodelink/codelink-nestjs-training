@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -11,10 +12,12 @@ import {
   LOGIN_USER_SELECT,
   PUBLIC_USER_SELECT,
   type AuthenticatedUser,
+  toAuthenticatedUser,
 } from './auth.select';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { AuthResponse } from './auth.types';
+import { SYSTEM_ROLE } from '../rbac/rbac.constants';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
 
@@ -37,15 +40,26 @@ export class AuthService {
 
     try {
       const user = await this.prisma.user.create({
-        data: { email, passwordHash },
+        data: {
+          email,
+          passwordHash,
+          roles: {
+            create: { role: { connect: { name: SYSTEM_ROLE.USER } } },
+          },
+        },
         select: PUBLIC_USER_SELECT,
       });
 
-      return this.createAuthResponse(user);
+      return this.createAuthResponse(toAuthenticatedUser(user));
     } catch (error: unknown) {
       if (isPrismaError(error, 'P2002')) {
         throw new ConflictException(
           'An account with this email already exists',
+        );
+      }
+      if (isPrismaError(error, 'P2025')) {
+        throw new InternalServerErrorException(
+          'Default authorization role is not initialized',
         );
       }
 
@@ -68,12 +82,7 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
-    return this.createAuthResponse({
-      id: user.id,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    });
+    return this.createAuthResponse(toAuthenticatedUser(user));
   }
 
   private async createAuthResponse(

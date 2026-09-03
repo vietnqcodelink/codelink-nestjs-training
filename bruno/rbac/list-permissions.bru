@@ -1,0 +1,56 @@
+meta {
+  name: List permissions
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/rbac/permissions
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:post-response {
+  if (res.status === 200 && Array.isArray(res.body)) {
+    const permissionVariables = {
+      "student:create": "studentCreatePermissionId",
+      "student:read": "studentReadPermissionId",
+      "student:update": "studentUpdatePermissionId",
+      "student:delete": "studentDeletePermissionId",
+      "enrollment:create": "enrollmentCreatePermissionId",
+      "enrollment:read": "enrollmentReadPermissionId",
+      "enrollment:delete": "enrollmentDeletePermissionId",
+    };
+
+    for (const [permissionKey, variableName] of Object.entries(permissionVariables)) {
+      const permission = res.body.find((item) => item.key === permissionKey);
+      if (permission?.id) {
+        bru.setVar(variableName, permission.id);
+      }
+    }
+  }
+}
+
+tests {
+  test("returns the application permission catalog", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+  });
+
+  test("contains Student and Enrollment permissions", function() {
+    const keys = res.body.map((permission) => permission.key);
+    expect(keys).to.include.members([
+      "student:create",
+      "student:read",
+      "student:update",
+      "student:delete",
+      "enrollment:create",
+      "enrollment:read",
+      "enrollment:delete",
+    ]);
+  });
+}

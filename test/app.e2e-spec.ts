@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { createValidationPipe } from './../src/common/validation';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { SYSTEM_ROLE } from './../src/rbac/rbac.constants';
 
 describe('AppController (e2e)', () => {
   interface AuthResponseBody {
@@ -13,6 +14,7 @@ describe('AppController (e2e)', () => {
     user: {
       id: string;
       email: string;
+      roles: string[];
       passwordHash?: string;
     };
   }
@@ -24,6 +26,7 @@ describe('AppController (e2e)', () => {
       id: string;
       email: string;
       passwordHash: string;
+      roles: { role: { name: string } }[];
       createdAt: Date;
       updatedAt: Date;
     }
@@ -36,6 +39,7 @@ describe('AppController (e2e)', () => {
             id: '4d26ed6a-1f21-4df2-98cf-b79b7e214d0f',
             email: data.email,
             passwordHash: data.passwordHash,
+            roles: [{ role: { name: SYSTEM_ROLE.USER } }],
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
           };
@@ -44,6 +48,7 @@ describe('AppController (e2e)', () => {
           return {
             id: user.id,
             email: user.email,
+            roles: user.roles,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
           };
@@ -107,6 +112,7 @@ describe('AppController (e2e)', () => {
       user: {
         id: '4d26ed6a-1f21-4df2-98cf-b79b7e214d0f',
         email: 'user@example.com',
+        roles: [SYSTEM_ROLE.USER],
       },
     });
     expect(registrationBody.user).not.toHaveProperty('passwordHash');

@@ -3,21 +3,27 @@ import type { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { Prisma } from '../generated/prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
+import { SYSTEM_ROLE } from '../rbac/rbac.constants';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
-  const user = {
+  const userRecord = {
     id: '4d26ed6a-1f21-4df2-98cf-b79b7e214d0f',
     email: 'user@example.com',
+    roles: [{ role: { name: SYSTEM_ROLE.USER } }],
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   };
-  type LoginUser = typeof user & { passwordHash: string };
+  const authenticatedUser = {
+    ...userRecord,
+    roles: [SYSTEM_ROLE.USER],
+  };
+  type LoginUser = typeof userRecord & { passwordHash: string };
   const createUser =
     jest.fn<
       (args: {
         data: { email: string; passwordHash: string };
-      }) => Promise<typeof user>
+      }) => Promise<typeof userRecord>
     >();
   const findUser =
     jest.fn<
@@ -42,7 +48,7 @@ describe('AuthService', () => {
     createUser.mockImplementation(
       ({ data }: { data: { email: string; passwordHash: string } }) => {
         savedCredentials = data;
-        return Promise.resolve(user);
+        return Promise.resolve(userRecord);
       },
     );
 
@@ -56,6 +62,17 @@ describe('AuthService', () => {
       throw new Error('Expected credentials to be persisted');
     }
     expect(savedCredentials.email).toBe('user@example.com');
+    expect(createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          roles: {
+            create: {
+              role: { connect: { name: SYSTEM_ROLE.USER } },
+            },
+          },
+        }) as object,
+      }),
+    );
     await expect(
       argon2.verify(
         savedCredentials.passwordHash,
@@ -65,10 +82,12 @@ describe('AuthService', () => {
     expect(result).toEqual({
       accessToken: 'signed-access-token',
       tokenType: 'Bearer',
-      user,
+      user: authenticatedUser,
     });
     expect(result.user).not.toHaveProperty('passwordHash');
-    expect(signAsync).toHaveBeenCalledWith({ sub: user.id });
+    expect(signAsync).toHaveBeenCalledWith({
+      sub: userRecord.id,
+    });
   });
 
   it('returns conflict when the normalized email already exists', async () => {
@@ -81,7 +100,7 @@ describe('AuthService', () => {
 
     await expect(
       service.register({
-        email: user.email,
+        email: userRecord.email,
         password: 'a sufficiently long password',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -89,7 +108,7 @@ describe('AuthService', () => {
 
   it('verifies credentials and never returns the password hash', async () => {
     const passwordHash = await argon2.hash('a sufficiently long password');
-    findUser.mockResolvedValue({ ...user, passwordHash });
+    findUser.mockResolvedValue({ ...userRecord, passwordHash });
 
     const result = await service.login({
       email: 'USER@example.com',
@@ -97,9 +116,9 @@ describe('AuthService', () => {
     });
 
     expect(findUser).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { email: user.email } }),
+      expect.objectContaining({ where: { email: userRecord.email } }),
     );
-    expect(result.user).toEqual(user);
+    expect(result.user).toEqual(authenticatedUser);
     expect(result.user).not.toHaveProperty('passwordHash');
   });
 
@@ -108,7 +127,7 @@ describe('AuthService', () => {
 
     await expect(
       service.login({
-        email: user.email,
+        email: userRecord.email,
         password: 'a sufficiently long password',
       }),
     ).rejects.toEqual(
@@ -123,11 +142,11 @@ describe('AuthService', () => {
     const passwordHash = await argon2.hash(
       'the actual sufficiently long password',
     );
-    findUser.mockResolvedValue({ ...user, passwordHash });
+    findUser.mockResolvedValue({ ...userRecord, passwordHash });
 
     await expect(
       service.login({
-        email: user.email,
+        email: userRecord.email,
         password: 'wrong password value',
       }),
     ).rejects.toEqual(

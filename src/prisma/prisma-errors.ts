@@ -1,6 +1,6 @@
 import { Prisma } from '../generated/prisma/client';
 
-type PrismaErrorCode = 'P2002' | 'P2003' | 'P2025';
+type PrismaErrorCode = 'P2002' | 'P2003' | 'P2025' | 'P2034';
 
 export function isPrismaError(
   error: unknown,

@@ -5,6 +5,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { authConfig } from '../config/auth.config';
 import { PrismaModule } from '../prisma/prisma.module';
+import { PermissionsGuard } from '../rbac/permissions.guard';
+import { RolesGuard } from '../rbac/roles.guard';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -29,7 +31,11 @@ import { JwtAuthGuard } from './jwt-auth.guard';
   providers: [
     AuthService,
     JwtAuthGuard,
+    RolesGuard,
+    PermissionsGuard,
     { provide: APP_GUARD, useExisting: JwtAuthGuard },
+    { provide: APP_GUARD, useExisting: RolesGuard },
+    { provide: APP_GUARD, useExisting: PermissionsGuard },
   ],
 })
 export class AuthModule {}
