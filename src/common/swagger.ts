@@ -2,6 +2,8 @@ import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 export const SWAGGER_BEARER_AUTH = 'access-token';
+export const SWAGGER_PATH = 'api/docs';
+export const SWAGGER_JSON_PATH = `${SWAGGER_PATH}/json`;
 
 export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
@@ -15,8 +17,8 @@ export function setupSwagger(app: INestApplication): void {
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('docs', app, documentFactory, {
+  SwaggerModule.setup(SWAGGER_PATH, app, documentFactory, {
     customSiteTitle: 'Student Management API Docs',
-    jsonDocumentUrl: 'docs/json',
+    jsonDocumentUrl: SWAGGER_JSON_PATH,
   });
 }

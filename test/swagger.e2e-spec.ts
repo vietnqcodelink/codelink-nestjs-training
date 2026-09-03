@@ -3,7 +3,11 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
-import { setupSwagger } from '../src/common/swagger';
+import {
+  setupSwagger,
+  SWAGGER_JSON_PATH,
+  SWAGGER_PATH,
+} from '../src/common/swagger';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('OpenAPI document (e2e)', () => {
@@ -22,33 +26,78 @@ describe('OpenAPI document (e2e)', () => {
     await app.init();
   });
 
-  it('documents every public API path and bearer authentication', async () => {
+  it('serves Swagger UI at the documented endpoint', async () => {
     const response = await request(app.getHttpServer())
-      .get('/docs/json')
+      .get(`/${SWAGGER_PATH}`)
+      .expect(200);
+
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.text).toContain('swagger-ui');
+  });
+
+  it('documents every API operation and bearer authentication', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/${SWAGGER_JSON_PATH}`)
       .expect(200);
     const document = response.body as {
-      paths: Record<string, unknown>;
-      components?: { securitySchemes?: Record<string, unknown> };
+      paths: Record<
+        string,
+        Record<
+          string,
+          { summary?: string; responses?: Record<string, unknown> }
+        >
+      >;
+      components?: {
+        schemas?: Record<string, unknown>;
+        securitySchemes?: Record<string, unknown>;
+      };
     };
 
-    expect(Object.keys(document.paths)).toEqual(
-      expect.arrayContaining([
-        '/',
-        '/auth/register',
-        '/auth/login',
-        '/students',
-        '/students/{id}',
-        '/courses',
-        '/courses/{id}',
-        '/enrollments',
-        '/enrollments/{id}',
-        '/students/{studentId}/courses',
-        '/rbac/roles',
-        '/rbac/roles/{id}',
-        '/rbac/permissions',
-        '/rbac/roles/{id}/permissions',
-        '/rbac/users/{userId}/roles',
-      ]),
+    const expectedOperations: Record<string, string[]> = {
+      '/': ['get'],
+      '/auth/register': ['post'],
+      '/auth/login': ['post'],
+      '/students': ['get', 'post'],
+      '/students/{id}': ['get', 'patch', 'delete'],
+      '/courses': ['get', 'post'],
+      '/courses/{id}': ['get', 'patch', 'delete'],
+      '/enrollments': ['post'],
+      '/enrollments/{id}': ['delete'],
+      '/students/{studentId}/courses': ['get'],
+      '/rbac/roles': ['get', 'post'],
+      '/rbac/roles/{id}': ['patch', 'delete'],
+      '/rbac/permissions': ['get'],
+      '/rbac/roles/{id}/permissions': ['put'],
+      '/rbac/users/{userId}/roles': ['get', 'put'],
+    };
+
+    for (const [path, methods] of Object.entries(expectedOperations)) {
+      expect(document.paths).toHaveProperty(path);
+      for (const method of methods) {
+        const operation = document.paths[path]?.[method];
+        expect(operation?.summary).toEqual(expect.any(String));
+        expect(operation?.responses).toBeDefined();
+        expect(
+          Object.keys(operation?.responses ?? {}).some((status) =>
+            status.startsWith('2'),
+          ),
+        ).toBe(true);
+      }
+    }
+
+    expect(document.components?.schemas).toEqual(
+      expect.objectContaining({
+        ApiErrorResponseDto: expect.any(Object),
+        AuthResponseDto: expect.any(Object),
+        CreateCourseDto: expect.any(Object),
+        CreateEnrollmentDto: expect.any(Object),
+        CreateRoleDto: expect.any(Object),
+        CreateStudentDto: expect.any(Object),
+        CourseResponseDto: expect.any(Object),
+        PaginatedCoursesResponseDto: expect.any(Object),
+        PaginatedStudentsResponseDto: expect.any(Object),
+        StudentResponseDto: expect.any(Object),
+      }),
     );
     expect(document.components?.securitySchemes).toHaveProperty('access-token');
   });

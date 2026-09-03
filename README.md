@@ -240,9 +240,38 @@ enrollments return `404 Not Found`.
 
 ## API documentation
 
-Swagger UI is available at `http://127.0.0.1:3000/docs`, with the OpenAPI JSON
-at `http://127.0.0.1:3000/docs/json`. Use **Authorize** in Swagger UI to set the
-JWT bearer token for protected endpoints.
+Swagger UI is available at `http://127.0.0.1:3000/api/docs`, with the OpenAPI
+JSON at `http://127.0.0.1:3000/api/docs/json`. Use **Authorize** in Swagger UI to
+set the JWT bearer token for protected endpoints.
+
+Successful responses follow REST semantics consistently: a single resource is
+returned directly, paginated collections use `{ data, meta }`, and successful
+deletes return `204` without a response body. This avoids an extra success
+wrapper while keeping every endpoint predictable.
+
+## Error handling
+
+A global exception filter keeps every error response in the same minimal shape:
+
+```json
+{
+  "statusCode": 404,
+  "message": "Student not found"
+}
+```
+
+Validation failures return `400`, authentication and authorization failures use
+`401` and `403`, missing resources return `404`, and resource conflicts return
+`409`. Unexpected failures return `500` without exposing internal error details.
+
+## Logging
+
+The application uses NestJS Logger backed by Pino. HTTP logs include the request
+ID, method, status, and duration while sensitive authorization and cookie headers
+are redacted. Important business events such as enrollment creation and removal
+are logged with their related IDs. Expected `4xx` responses remain warning-level
+request logs; `5xx` exceptions are logged with their stack and return only the
+safe error response to clients.
 
 ### Bruno collection
 

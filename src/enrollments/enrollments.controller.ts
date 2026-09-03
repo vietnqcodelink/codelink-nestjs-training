@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -22,6 +23,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import type { PaginatedCourses } from '../courses/courses.types';
 import { PaginatedCoursesResponseDto } from '../courses/dto/course-response.dto';
@@ -35,7 +37,14 @@ import { EnrollmentsService } from './enrollments.service';
 
 @ApiTags('Enrollments')
 @ApiBearerAuth(SWAGGER_BEARER_AUTH)
-@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+@ApiBadRequestResponse({
+  description: 'Request validation failed',
+  type: ApiErrorResponseDto,
+})
+@ApiUnauthorizedResponse({
+  description: 'Missing or invalid access token',
+  type: ApiErrorResponseDto,
+})
 @Controller()
 export class EnrollmentsController {
   constructor(private readonly enrollmentsService: EnrollmentsService) {}
@@ -44,10 +53,17 @@ export class EnrollmentsController {
   @RequirePermissions(PERMISSION.ENROLLMENT_CREATE)
   @ApiOperation({ summary: 'Enroll a student in a course' })
   @ApiCreatedResponse({ type: EnrollmentResponseDto })
-  @ApiConflictResponse({ description: 'Student is already enrolled' })
-  @ApiNotFoundResponse({ description: 'Student or course not found' })
+  @ApiConflictResponse({
+    description: 'Student is already enrolled',
+    type: ApiErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Student or course not found',
+    type: ApiErrorResponseDto,
+  })
   @ApiForbiddenResponse({
     description: 'enrollment:create permission required',
+    type: ApiErrorResponseDto,
   })
   create(@Body() dto: CreateEnrollmentDto): Promise<EnrollmentResponse> {
     return this.enrollmentsService.create(dto);
@@ -55,10 +71,19 @@ export class EnrollmentsController {
 
   @Get('students/:studentId/courses')
   @RequirePermissions(PERMISSION.ENROLLMENT_READ)
-  @ApiOperation({ summary: 'List all courses of a student' })
+  @ApiOperation({
+    summary: 'List all courses of a student',
+    description: 'Returns a deterministically ordered paginated course list.',
+  })
   @ApiOkResponse({ type: PaginatedCoursesResponseDto })
-  @ApiNotFoundResponse({ description: 'Student not found' })
-  @ApiForbiddenResponse({ description: 'enrollment:read permission required' })
+  @ApiNotFoundResponse({
+    description: 'Student not found',
+    type: ApiErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'enrollment:read permission required',
+    type: ApiErrorResponseDto,
+  })
   findCoursesByStudent(
     @Param('studentId', new ParseUUIDPipe({ version: '4' }))
     studentId: string,
@@ -72,9 +97,13 @@ export class EnrollmentsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove an enrollment' })
   @ApiNoContentResponse({ description: 'Enrollment removed' })
-  @ApiNotFoundResponse({ description: 'Enrollment not found' })
+  @ApiNotFoundResponse({
+    description: 'Enrollment not found',
+    type: ApiErrorResponseDto,
+  })
   @ApiForbiddenResponse({
     description: 'enrollment:delete permission required',
+    type: ApiErrorResponseDto,
   })
   remove(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -24,6 +24,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
 import { SWAGGER_BEARER_AUTH } from '../common/swagger';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { ReplaceRolePermissionsDto } from './dto/replace-role-permissions.dto';
@@ -45,8 +46,18 @@ import type {
 
 @ApiTags('RBAC')
 @ApiBearerAuth(SWAGGER_BEARER_AUTH)
-@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
-@ApiForbiddenResponse({ description: 'RBAC management permission required' })
+@ApiBadRequestResponse({
+  description: 'Request validation failed',
+  type: ApiErrorResponseDto,
+})
+@ApiUnauthorizedResponse({
+  description: 'Missing or invalid access token',
+  type: ApiErrorResponseDto,
+})
+@ApiForbiddenResponse({
+  description: 'RBAC management permission required',
+  type: ApiErrorResponseDto,
+})
 @RequirePermissions(PERMISSION.RBAC_MANAGE)
 @Controller('rbac')
 export class RbacController {
@@ -55,13 +66,19 @@ export class RbacController {
   @Post('roles')
   @ApiOperation({ summary: 'Create a custom role' })
   @ApiCreatedResponse({ type: RoleResponseDto })
-  @ApiConflictResponse({ description: 'Role name already exists' })
+  @ApiConflictResponse({
+    description: 'Role name already exists',
+    type: ApiErrorResponseDto,
+  })
   createRole(@Body() dto: CreateRoleDto): Promise<RoleResponse> {
     return this.rbacService.createRole(dto);
   }
 
   @Get('roles')
-  @ApiOperation({ summary: 'List roles and their permissions' })
+  @ApiOperation({
+    summary: 'List roles and their permissions',
+    description: 'Returns system and custom roles ordered by role name.',
+  })
   @ApiOkResponse({ type: [RoleResponseDto] })
   findRoles(): Promise<RoleResponse[]> {
     return this.rbacService.findRoles();
@@ -70,8 +87,14 @@ export class RbacController {
   @Patch('roles/:id')
   @ApiOperation({ summary: 'Update a custom role' })
   @ApiOkResponse({ type: RoleResponseDto })
-  @ApiNotFoundResponse({ description: 'Role not found' })
-  @ApiConflictResponse({ description: 'Role name already exists' })
+  @ApiNotFoundResponse({
+    description: 'Role not found',
+    type: ApiErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Role name already exists',
+    type: ApiErrorResponseDto,
+  })
   updateRole(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() dto: UpdateRoleDto,
@@ -83,8 +106,14 @@ export class RbacController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an unused custom role' })
   @ApiNoContentResponse({ description: 'Role deleted' })
-  @ApiNotFoundResponse({ description: 'Role not found' })
-  @ApiConflictResponse({ description: 'Role is assigned to users' })
+  @ApiNotFoundResponse({
+    description: 'Role not found',
+    type: ApiErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Role is assigned to users',
+    type: ApiErrorResponseDto,
+  })
   deleteRole(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<void> {
@@ -92,7 +121,10 @@ export class RbacController {
   }
 
   @Get('permissions')
-  @ApiOperation({ summary: 'List the application permission catalog' })
+  @ApiOperation({
+    summary: 'List the application permission catalog',
+    description: 'Returns code-owned permission keys ordered alphabetically.',
+  })
   @ApiOkResponse({ type: [PermissionResponseDto] })
   findPermissions(): Promise<PermissionResponse[]> {
     return this.rbacService.findPermissions();
@@ -101,7 +133,10 @@ export class RbacController {
   @Get('users/:userId/roles')
   @ApiOperation({ summary: 'List roles assigned to a user' })
   @ApiOkResponse({ type: UserRolesResponseDto })
-  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    type: ApiErrorResponseDto,
+  })
   findUserRoles(
     @Param('userId', new ParseUUIDPipe({ version: '4' })) userId: string,
   ): Promise<UserRolesResponse> {
@@ -109,10 +144,20 @@ export class RbacController {
   }
 
   @Put('roles/:id/permissions')
-  @ApiOperation({ summary: 'Replace permissions assigned to a custom role' })
+  @ApiOperation({
+    summary: 'Replace permissions assigned to a custom role',
+    description:
+      'Atomically replaces the complete permission set; system roles cannot be modified.',
+  })
   @ApiOkResponse({ type: RoleResponseDto })
-  @ApiNotFoundResponse({ description: 'Role not found' })
-  @ApiBadRequestResponse({ description: 'Unknown permission ID' })
+  @ApiNotFoundResponse({
+    description: 'Role not found',
+    type: ApiErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Unknown permission ID',
+    type: ApiErrorResponseDto,
+  })
   replaceRolePermissions(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() dto: ReplaceRolePermissionsDto,
@@ -121,11 +166,24 @@ export class RbacController {
   }
 
   @Put('users/:userId/roles')
-  @ApiOperation({ summary: 'Replace roles assigned to a user' })
+  @ApiOperation({
+    summary: 'Replace roles assigned to a user',
+    description:
+      'Atomically replaces the complete role set while protecting the last administrator.',
+  })
   @ApiOkResponse({ type: UserRolesResponseDto })
-  @ApiNotFoundResponse({ description: 'User not found' })
-  @ApiBadRequestResponse({ description: 'Unknown role ID' })
-  @ApiConflictResponse({ description: 'Last administrator protection' })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    type: ApiErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Unknown role ID',
+    type: ApiErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Last administrator protection',
+    type: ApiErrorResponseDto,
+  })
   replaceUserRoles(
     @Param('userId', new ParseUUIDPipe({ version: '4' })) userId: string,
     @Body() dto: ReplaceUserRolesDto,

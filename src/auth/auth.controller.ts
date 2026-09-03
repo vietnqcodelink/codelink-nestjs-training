@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import {
+  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -16,6 +17,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
 import { AuthService } from './auth.service';
 import type { AuthResponse } from './auth.types';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -26,6 +28,10 @@ import { Public } from './public.decorator';
 @Public()
 @ApiTags('Authentication')
 @UseGuards(ThrottlerGuard)
+@ApiBadRequestResponse({
+  description: 'Request validation failed',
+  type: ApiErrorResponseDto,
+})
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -37,7 +43,10 @@ export class AuthController {
     description: 'Account created and authenticated',
     type: AuthResponseDto,
   })
-  @ApiConflictResponse({ description: 'Email already registered' })
+  @ApiConflictResponse({
+    description: 'Email already registered',
+    type: ApiErrorResponseDto,
+  })
   register(@Body() dto: RegisterDto): Promise<AuthResponse> {
     return this.authService.register(dto);
   }
@@ -50,7 +59,10 @@ export class AuthController {
     description: 'Credentials authenticated',
     type: AuthResponseDto,
   })
-  @ApiUnauthorizedResponse({ description: 'Invalid email or password' })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid email or password',
+    type: ApiErrorResponseDto,
+  })
   login(@Body() dto: LoginDto): Promise<AuthResponse> {
     return this.authService.login(dto);
   }
