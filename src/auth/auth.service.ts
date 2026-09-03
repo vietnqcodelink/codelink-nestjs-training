@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { Prisma } from '../generated/prisma/client';
+import { isPrismaError } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   LOGIN_USER_SELECT,
@@ -43,10 +43,7 @@ export class AuthService {
 
       return this.createAuthResponse(user);
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (isPrismaError(error, 'P2002')) {
         throw new ConflictException(
           'An account with this email already exists',
         );

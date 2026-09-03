@@ -4,6 +4,7 @@ import type { ConfigType } from '@nestjs/config';
 import { Logger as PinoLogger, LoggerErrorInterceptor } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { createValidationPipe } from './common/validation';
+import { setupSwagger } from './common/swagger';
 import { appConfig } from './config/app.config';
 
 async function bootstrap() {
@@ -11,6 +12,7 @@ async function bootstrap() {
   app.useLogger(app.get(PinoLogger));
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
   app.useGlobalPipes(createValidationPipe());
+  setupSwagger(app);
   app.enableShutdownHooks();
 
   const { host, port } = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
