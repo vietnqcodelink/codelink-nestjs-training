@@ -1,0 +1,35 @@
+meta {
+  name: Update student
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/students/{{studentId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "Updated Bruno Student"
+  }
+}
+
+tests {
+  test("updates the selected fields", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.include({
+      id: bru.getVar("studentId"),
+      name: "Updated Bruno Student"
+    });
+  });
+}

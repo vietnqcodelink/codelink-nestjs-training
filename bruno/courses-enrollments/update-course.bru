@@ -1,0 +1,32 @@
+meta {
+  name: Update course
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/courses/{{courseId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "Updated Bruno Course"
+  }
+}
+
+tests {
+  test("updates the course", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.name).to.equal("Updated Bruno Course");
+  });
+}

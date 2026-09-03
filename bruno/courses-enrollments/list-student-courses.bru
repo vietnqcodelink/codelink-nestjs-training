@@ -1,0 +1,22 @@
+meta {
+  name: List student courses
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/students/{{enrollmentStudentId}}/courses?page=1&limit=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("returns the enrolled course", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.data.map((course) => course.id)).to.include(bru.getVar("courseId"));
+  });
+}

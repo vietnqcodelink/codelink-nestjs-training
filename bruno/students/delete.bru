@@ -1,0 +1,21 @@
+meta {
+  name: Delete student
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/students/{{studentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("deletes the student without a response body", function() {
+    expect(res.status).to.equal(204);
+  });
+}

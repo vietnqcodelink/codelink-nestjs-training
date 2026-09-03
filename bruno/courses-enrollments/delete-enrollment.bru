@@ -1,0 +1,21 @@
+meta {
+  name: Delete enrollment
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/enrollments/{{enrollmentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("removes the enrollment", function() {
+    expect(res.status).to.equal(204);
+  });
+}
