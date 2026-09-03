@@ -1,0 +1,22 @@
+name: student-management-system
+
+services:
+  app:
+    image: ${APP_IMAGE:?Set APP_IMAGE to the immutable image tag to deploy}
+    pull_policy: always
+    init: true
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - ${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-3000}:3000
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'

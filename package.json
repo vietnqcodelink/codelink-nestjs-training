@@ -5,10 +5,15 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  },
   "scripts": {
     "build": "nest build",
     "prebuild": "prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\" \".github/**/*.yml\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -21,6 +26,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "pretest:e2e": "prisma generate",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "verify": "npm run format:check && npm run lint && npm test -- --runInBand && npm run test:e2e -- --runInBand && npm run build && npm run prisma:validate",
     "prisma:generate": "prisma generate",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
@@ -30,7 +36,8 @@
     "prisma:studio": "prisma studio",
     "infra:up": "docker compose up -d --wait postgres",
     "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs -f postgres"
+    "infra:logs": "docker compose logs -f postgres",
+    "prepare": "husky"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -65,7 +72,9 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.0",
+    "lint-staged": "^17.3.0",
     "pino-pretty": "^13.1.3",
     "prettier": "^3.4.2",
     "prisma": "^7.10.0",
@@ -95,5 +104,12 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "watchman": false
+  },
+  "lint-staged": {
+    "{src,test}/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": "prettier --write"
   }
 }
