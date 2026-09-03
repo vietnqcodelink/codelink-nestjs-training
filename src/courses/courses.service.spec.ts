@@ -119,6 +119,15 @@ describe('CoursesService', () => {
     );
   });
 
+  it('returns a course by ID', async () => {
+    findCourse.mockResolvedValue(course);
+
+    await expect(service.findOne(course.id)).resolves.toEqual(course);
+    expect(findCourse).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: course.id } }),
+    );
+  });
+
   it('returns not found for an unknown course', async () => {
     findCourse.mockResolvedValue(null);
 
@@ -134,6 +143,48 @@ describe('CoursesService', () => {
     expect(updateCourse).not.toHaveBeenCalled();
   });
 
+  it('normalizes the fields provided when updating a course', async () => {
+    const updatedCourse = {
+      ...course,
+      name: 'Advanced Computer Science',
+      code: 'CS-201',
+      description: null,
+    };
+    updateCourse.mockResolvedValue(updatedCourse);
+
+    await expect(
+      service.update(course.id, {
+        name: '  Advanced Computer Science  ',
+        code: ' cs-201 ',
+        description: '   ',
+      }),
+    ).resolves.toEqual(updatedCourse);
+
+    expect(updateCourse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: course.id },
+        data: {
+          name: 'Advanced Computer Science',
+          code: 'CS-201',
+          description: null,
+        },
+      }),
+    );
+  });
+
+  it('maps a missing update target to not found', async () => {
+    updateCourse.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: '7.10.0',
+      }),
+    );
+
+    await expect(
+      service.update(course.id, { name: 'Updated course' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('maps a missing delete target to not found', async () => {
     deleteCourse.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError('Record not found', {
@@ -145,5 +196,12 @@ describe('CoursesService', () => {
     await expect(service.remove(course.id)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('deletes a course by ID', async () => {
+    deleteCourse.mockResolvedValue(course);
+
+    await expect(service.remove(course.id)).resolves.toBeUndefined();
+    expect(deleteCourse).toHaveBeenCalledWith({ where: { id: course.id } });
   });
 });

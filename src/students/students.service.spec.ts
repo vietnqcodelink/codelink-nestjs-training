@@ -146,6 +146,15 @@ describe('StudentsService', () => {
     expect(countStudents).toHaveBeenCalledWith({ where });
   });
 
+  it('returns a student by ID', async () => {
+    findStudent.mockResolvedValue(student);
+
+    await expect(service.findOne(student.id)).resolves.toEqual(student);
+    expect(findStudent).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: student.id } }),
+    );
+  });
+
   it('returns not found for an unknown student', async () => {
     findStudent.mockResolvedValue(null);
 
@@ -154,17 +163,46 @@ describe('StudentsService', () => {
     );
   });
 
-  it('updates only the fields provided by the client', async () => {
-    updateStudent.mockResolvedValue({ ...student, name: 'Jane Smith' });
+  it('normalizes the fields provided when updating a student', async () => {
+    const updatedStudent = {
+      ...student,
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      dateOfBirth: new Date('2001-02-20T00:00:00.000Z'),
+    };
+    updateStudent.mockResolvedValue(updatedStudent);
 
-    await service.update(student.id, { name: '  Jane Smith  ' });
+    await expect(
+      service.update(student.id, {
+        name: '  Jane Smith  ',
+        email: '  JANE.SMITH@Example.com ',
+        dateOfBirth: '2001-02-20',
+      }),
+    ).resolves.toEqual(updatedStudent);
 
     expect(updateStudent).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: student.id },
-        data: { name: 'Jane Smith' },
+        data: {
+          name: 'Jane Smith',
+          email: 'jane.smith@example.com',
+          dateOfBirth: new Date('2001-02-20T00:00:00.000Z'),
+        },
       }),
     );
+  });
+
+  it('maps a duplicate email during update to conflict', async () => {
+    updateStudent.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '7.10.0',
+      }),
+    );
+
+    await expect(
+      service.update(student.id, { email: 'existing@example.com' }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('rejects an empty update and a future date of birth', async () => {
@@ -188,5 +226,12 @@ describe('StudentsService', () => {
     await expect(service.remove(student.id)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('deletes a student by ID', async () => {
+    deleteStudent.mockResolvedValue(student);
+
+    await expect(service.remove(student.id)).resolves.toBeUndefined();
+    expect(deleteStudent).toHaveBeenCalledWith({ where: { id: student.id } });
   });
 });
