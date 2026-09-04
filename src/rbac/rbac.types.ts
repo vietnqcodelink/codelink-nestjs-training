@@ -1,4 +1,9 @@
-import type { PermissionRecord, RoleRecord } from './rbac.select';
+import type { PaginatedResponse } from '../common/pagination';
+import type {
+  PermissionRecord,
+  RbacUserRecord,
+  RoleRecord,
+} from './rbac.select';
 
 export type PermissionResponse = PermissionRecord;
 
@@ -18,6 +23,15 @@ export interface UserRolesResponse {
   roles: RoleResponse[];
 }
 
+export interface RbacUserResponse {
+  id: string;
+  email: string;
+  createdAt: Date;
+  roles: { id: string; name: string }[];
+}
+
+export type PaginatedRbacUsers = PaginatedResponse<RbacUserResponse>;
+
 export function toRoleResponse(role: RoleRecord): RoleResponse {
   return {
     id: role.id,
@@ -30,5 +44,16 @@ export function toRoleResponse(role: RoleRecord): RoleResponse {
       .sort((left, right) => left.key.localeCompare(right.key)),
     createdAt: role.createdAt,
     updatedAt: role.updatedAt,
+  };
+}
+
+export function toRbacUserResponse(user: RbacUserRecord): RbacUserResponse {
+  return {
+    id: user.id,
+    email: user.email,
+    createdAt: user.createdAt,
+    roles: user.roles
+      .map(({ role }) => role)
+      .sort((left, right) => left.name.localeCompare(right.name)),
   };
 }

@@ -31,9 +31,14 @@ import { SWAGGER_BEARER_AUTH } from '../common/swagger';
 import { RequirePermissions } from '../rbac/permissions.decorator';
 import { PERMISSION } from '../rbac/rbac.constants';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
-import { EnrollmentResponseDto } from './dto/enrollment-response.dto';
+import {
+  EnrollmentResponseDto,
+  PaginatedEnrollmentsResponseDto,
+} from './dto/enrollment-response.dto';
+import { ListEnrollmentsQueryDto } from './dto/list-enrollments-query.dto';
 import type { EnrollmentResponse } from './enrollment.select';
 import { EnrollmentsService } from './enrollments.service';
+import type { PaginatedEnrollments } from './enrollments.types';
 
 @ApiTags('Enrollments')
 @ApiBearerAuth(SWAGGER_BEARER_AUTH)
@@ -67,6 +72,24 @@ export class EnrollmentsController {
   })
   create(@Body() dto: CreateEnrollmentDto): Promise<EnrollmentResponse> {
     return this.enrollmentsService.create(dto);
+  }
+
+  @Get('enrollments')
+  @RequirePermissions(PERMISSION.ENROLLMENT_READ)
+  @ApiOperation({
+    summary: 'List enrollments',
+    description:
+      'Returns paginated enrollments with student and course details. Supports filtering by student or course.',
+  })
+  @ApiOkResponse({ type: PaginatedEnrollmentsResponseDto })
+  @ApiForbiddenResponse({
+    description: 'enrollment:read permission required',
+    type: ApiErrorResponseDto,
+  })
+  findAll(
+    @Query() query: ListEnrollmentsQueryDto,
+  ): Promise<PaginatedEnrollments> {
+    return this.enrollmentsService.findAll(query);
   }
 
   @Get('students/:studentId/courses')

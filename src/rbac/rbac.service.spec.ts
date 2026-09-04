@@ -4,7 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
-import type { RoleRecord } from './rbac.select';
+import type { RbacUserRecord, RoleRecord } from './rbac.select';
 import { RbacService } from './rbac.service';
 
 describe('RbacService', () => {
@@ -21,6 +21,12 @@ describe('RbacService', () => {
     permissions: [],
     _count: { users: 0 },
   };
+  const directoryUser: RbacUserRecord = {
+    id: userId,
+    email: 'admin@example.com',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    roles: [{ role: { id: roleId, name: role.name } }],
+  };
 
   const createRole = jest.fn();
   const findRole = jest.fn();
@@ -32,6 +38,8 @@ describe('RbacService', () => {
   const deleteRolePermissions = jest.fn();
   const createRolePermissions = jest.fn();
   const findUser = jest.fn();
+  const findUsers = jest.fn();
+  const countUsers = jest.fn();
   const deleteUserRoles = jest.fn();
   const createUserRoles = jest.fn();
   const countUserRoles = jest.fn();
@@ -54,10 +62,14 @@ describe('RbacService', () => {
       count: countUserRoles,
     },
   };
-  const transaction = jest.fn(
-    (callback: (client: typeof transactionClient) => Promise<unknown>) =>
-      callback(transactionClient),
-  );
+  const transaction = jest.fn((input: unknown) => {
+    if (typeof input === 'function') {
+      return (input as (client: typeof transactionClient) => Promise<unknown>)(
+        transactionClient,
+      );
+    }
+    return Promise.all(input as Promise<unknown>[]);
+  });
   const prisma = {
     role: {
       create: createRole,
@@ -67,6 +79,7 @@ describe('RbacService', () => {
       delete: deleteRole,
     },
     permission: { count: countPermissions, findMany: findPermissions },
+    user: { findMany: findUsers, count: countUsers },
     $transaction: transaction,
   } as unknown as PrismaService;
   const service = new RbacService(prisma);
@@ -94,6 +107,30 @@ describe('RbacService', () => {
     await expect(
       service.updateRole(roleId, { description: 'Changed' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('searches the paginated user directory without sensitive fields', async () => {
+    findUsers.mockResolvedValue([directoryUser]);
+    countUsers.mockResolvedValue(1);
+
+    await expect(
+      service.findUsers({ page: 1, limit: 10, search: 'admin' }),
+    ).resolves.toEqual({
+      data: [
+        {
+          id: userId,
+          email: directoryUser.email,
+          createdAt: directoryUser.createdAt,
+          roles: [{ id: roleId, name: role.name }],
+        },
+      ],
+      meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    });
+    expect(findUsers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { email: { contains: 'admin', mode: 'insensitive' } },
+      }),
+    );
   });
 
   it('does not delete a role that is still assigned', async () => {

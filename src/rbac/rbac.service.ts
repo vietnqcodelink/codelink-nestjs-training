@@ -5,19 +5,27 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createPaginationMeta } from '../common/pagination';
 import { Prisma } from '../generated/prisma/client';
 import { isPrismaError } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateRoleDto } from './dto/create-role.dto';
+import type { ListUsersQueryDto } from './dto/list-users-query.dto';
 import type { ReplaceRolePermissionsDto } from './dto/replace-role-permissions.dto';
 import type { ReplaceUserRolesDto } from './dto/replace-user-roles.dto';
 import type { UpdateRoleDto } from './dto/update-role.dto';
 import { SYSTEM_ROLE } from './rbac.constants';
-import { PERMISSION_SELECT, ROLE_SELECT } from './rbac.select';
 import {
+  PERMISSION_SELECT,
+  RBAC_USER_SELECT,
+  ROLE_SELECT,
+} from './rbac.select';
+import {
+  type PaginatedRbacUsers,
   type PermissionResponse,
   type RoleResponse,
   type UserRolesResponse,
+  toRbacUserResponse,
   toRoleResponse,
 } from './rbac.types';
 
@@ -60,6 +68,28 @@ export class RbacService {
       orderBy: { key: 'asc' },
       select: PERMISSION_SELECT,
     });
+  }
+
+  async findUsers(query: ListUsersQueryDto): Promise<PaginatedRbacUsers> {
+    const { page, limit, search } = query;
+    const where: Prisma.UserWhereInput = search
+      ? { email: { contains: search, mode: 'insensitive' } }
+      : {};
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: [{ email: 'asc' }, { id: 'asc' }],
+        select: RBAC_USER_SELECT,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users.map(toRbacUserResponse),
+      meta: createPaginationMeta(page, limit, total),
+    };
   }
 
   async findUserRoles(userId: string): Promise<UserRolesResponse> {

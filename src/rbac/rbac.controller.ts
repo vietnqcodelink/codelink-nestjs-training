@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -27,10 +28,12 @@ import {
 import { ApiErrorResponseDto } from '../common/dto/api-error-response.dto';
 import { SWAGGER_BEARER_AUTH } from '../common/swagger';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { ReplaceRolePermissionsDto } from './dto/replace-role-permissions.dto';
 import { ReplaceUserRolesDto } from './dto/replace-user-roles.dto';
 import {
   PermissionResponseDto,
+  PaginatedRbacUsersResponseDto,
   RoleResponseDto,
   UserRolesResponseDto,
 } from './dto/rbac-response.dto';
@@ -39,6 +42,7 @@ import { RequirePermissions } from './permissions.decorator';
 import { PERMISSION } from './rbac.constants';
 import { RbacService } from './rbac.service';
 import type {
+  PaginatedRbacUsers,
   PermissionResponse,
   RoleResponse,
   UserRolesResponse,
@@ -128,6 +132,17 @@ export class RbacController {
   @ApiOkResponse({ type: [PermissionResponseDto] })
   findPermissions(): Promise<PermissionResponse[]> {
     return this.rbacService.findPermissions();
+  }
+
+  @Get('users')
+  @ApiOperation({
+    summary: 'Search users for role assignment',
+    description:
+      'Returns a paginated user directory with safe public fields and assigned role summaries.',
+  })
+  @ApiOkResponse({ type: PaginatedRbacUsersResponseDto })
+  findUsers(@Query() query: ListUsersQueryDto): Promise<PaginatedRbacUsers> {
+    return this.rbacService.findUsers(query);
   }
 
   @Get('users/:userId/roles')

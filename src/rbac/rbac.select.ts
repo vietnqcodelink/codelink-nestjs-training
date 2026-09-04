@@ -19,10 +19,25 @@ export const ROLE_SELECT = {
   _count: { select: { users: true } },
 } satisfies Prisma.RoleSelect;
 
+export const RBAC_USER_SELECT = {
+  id: true,
+  email: true,
+  createdAt: true,
+  roles: {
+    select: {
+      role: { select: { id: true, name: true } },
+    },
+  },
+} satisfies Prisma.UserSelect;
+
 export type PermissionRecord = Prisma.PermissionGetPayload<{
   select: typeof PERMISSION_SELECT;
 }>;
 
 export type RoleRecord = Prisma.RoleGetPayload<{
   select: typeof ROLE_SELECT;
+}>;
+
+export type RbacUserRecord = Prisma.UserGetPayload<{
+  select: typeof RBAC_USER_SELECT;
 }>;

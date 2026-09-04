@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PaginationMetaDto } from '../../common/dto/pagination-response.dto';
 
 export class PermissionResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -43,4 +44,34 @@ export class UserRolesResponseDto {
 
   @ApiProperty({ type: [RoleResponseDto] })
   roles!: RoleResponseDto[];
+}
+
+export class RbacUserRoleResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'ADMIN' })
+  name!: string;
+}
+
+export class RbacUserResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'email' })
+  email!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt!: Date;
+
+  @ApiProperty({ type: [RbacUserRoleResponseDto] })
+  roles!: RbacUserRoleResponseDto[];
+}
+
+export class PaginatedRbacUsersResponseDto {
+  @ApiProperty({ type: [RbacUserResponseDto] })
+  data!: RbacUserResponseDto[];
+
+  @ApiProperty({ type: PaginationMetaDto })
+  meta!: PaginationMetaDto;
 }

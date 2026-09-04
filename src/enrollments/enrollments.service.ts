@@ -8,13 +8,17 @@ import type { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { createPaginationMeta } from '../common/pagination';
 import { COURSE_SELECT } from '../courses/course.select';
 import type { PaginatedCourses } from '../courses/courses.types';
+import { Prisma } from '../generated/prisma/client';
 import { isPrismaError } from '../prisma/prisma-errors';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateEnrollmentDto } from './dto/create-enrollment.dto';
+import type { ListEnrollmentsQueryDto } from './dto/list-enrollments-query.dto';
 import {
+  ENROLLMENT_DETAILS_SELECT,
   ENROLLMENT_SELECT,
   type EnrollmentResponse,
 } from './enrollment.select';
+import type { PaginatedEnrollments } from './enrollments.types';
 
 @Injectable()
 export class EnrollmentsService {
@@ -42,6 +46,29 @@ export class EnrollmentsService {
     } catch (error: unknown) {
       this.handleWriteError(error);
     }
+  }
+
+  async findAll(query: ListEnrollmentsQueryDto): Promise<PaginatedEnrollments> {
+    const { page, limit, studentId, courseId } = query;
+    const where: Prisma.EnrollmentWhereInput = {
+      ...(studentId ? { studentId } : {}),
+      ...(courseId ? { courseId } : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.enrollment.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: ENROLLMENT_DETAILS_SELECT,
+      }),
+      this.prisma.enrollment.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: createPaginationMeta(page, limit, total),
+    };
   }
 
   async findCoursesByStudent(

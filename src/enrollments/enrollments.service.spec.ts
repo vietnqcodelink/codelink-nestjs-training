@@ -2,11 +2,23 @@ import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { CourseResponse } from '../courses/course.select';
 import { Prisma } from '../generated/prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
-import type { EnrollmentResponse } from './enrollment.select';
+import type { StudentResponse } from '../students/student.select';
+import type {
+  EnrollmentDetailsResponse,
+  EnrollmentResponse,
+} from './enrollment.select';
 import { EnrollmentsService } from './enrollments.service';
 
 describe('EnrollmentsService', () => {
   const studentId = '4d26ed6a-1f21-4df2-98cf-b79b7e214d0f';
+  const student: StudentResponse = {
+    id: studentId,
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+    dateOfBirth: new Date('2000-01-01T00:00:00.000Z'),
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
   const course: CourseResponse = {
     id: '16a64c89-2ae6-460a-bf93-ff2121c59927',
     name: 'Computer Science',
@@ -21,8 +33,18 @@ describe('EnrollmentsService', () => {
     courseId: course.id,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
   };
+  const enrollmentDetails: EnrollmentDetailsResponse = {
+    ...enrollment,
+    student,
+    course,
+  };
   const createEnrollment = jest.fn<() => Promise<EnrollmentResponse>>();
   const deleteEnrollment = jest.fn<() => Promise<EnrollmentResponse>>();
+  const findEnrollments = jest.fn<() => Promise<EnrollmentDetailsResponse[]>>();
+  const countEnrollments = jest.fn<() => Promise<number>>();
+  const transaction = jest.fn((operations: Promise<unknown>[]) =>
+    Promise.all(operations),
+  );
   const findStudent = jest.fn<
     () => Promise<{
       enrollments: { course: CourseResponse }[];
@@ -30,8 +52,14 @@ describe('EnrollmentsService', () => {
     } | null>
   >();
   const prisma = {
-    enrollment: { create: createEnrollment, delete: deleteEnrollment },
+    enrollment: {
+      create: createEnrollment,
+      delete: deleteEnrollment,
+      findMany: findEnrollments,
+      count: countEnrollments,
+    },
     student: { findUnique: findStudent },
+    $transaction: transaction,
   } as unknown as PrismaService;
   const service = new EnrollmentsService(prisma);
   let logSpy: jest.SpyInstance;
@@ -70,6 +98,22 @@ describe('EnrollmentsService', () => {
     await expect(
       service.create({ studentId, courseId: course.id }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('lists enrollments filtered by student with related records', async () => {
+    findEnrollments.mockResolvedValue([enrollmentDetails]);
+    countEnrollments.mockResolvedValue(1);
+
+    await expect(
+      service.findAll({ page: 1, limit: 20, studentId }),
+    ).resolves.toEqual({
+      data: [enrollmentDetails],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    expect(findEnrollments).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { studentId } }),
+    );
+    expect(countEnrollments).toHaveBeenCalledWith({ where: { studentId } });
   });
 
   it('returns all courses of a student with pagination metadata', async () => {
