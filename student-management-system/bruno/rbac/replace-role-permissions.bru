@@ -1,0 +1,49 @@
+meta {
+  name: Replace role permissions
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/rbac/roles/{{rbacRoleId}}/permissions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "permissionIds": [
+      "{{studentCreatePermissionId}}",
+      "{{studentReadPermissionId}}",
+      "{{studentUpdatePermissionId}}",
+      "{{studentDeletePermissionId}}",
+      "{{enrollmentCreatePermissionId}}",
+      "{{enrollmentReadPermissionId}}",
+      "{{enrollmentDeletePermissionId}}"
+    ]
+  }
+}
+
+tests {
+  test("replaces the role permissions atomically", function() {
+    expect(res.status).to.equal(200);
+    const keys = res.body.permissions.map((permission) => permission.key);
+    expect(keys).to.have.members([
+      "student:create",
+      "student:read",
+      "student:update",
+      "student:delete",
+      "enrollment:create",
+      "enrollment:read",
+      "enrollment:delete",
+    ]);
+  });
+}

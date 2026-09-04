@@ -1,0 +1,32 @@
+meta {
+  name: Restore target user roles
+  type: http
+  seq: 11
+}
+
+put {
+  url: {{baseUrl}}/rbac/users/{{rbacTargetUserId}}/roles
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "roleIds": ["{{systemUserRoleId}}"]
+  }
+}
+
+tests {
+  test("removes the temporary role from the target user", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.roles.map((role) => role.name)).to.deep.equal(["USER"]);
+  });
+}

@@ -1,0 +1,47 @@
+meta {
+  name: Create custom role
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/rbac/roles
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+script:pre-request {
+  bru.setVar("rbacRoleName", `BRUNO_ACADEMIC_OPERATOR_${Date.now()}`);
+}
+
+body:json {
+  {
+    "name": "{{rbacRoleName}}",
+    "description": "Temporary academic operations role created by Bruno"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body?.id) {
+    bru.setVar("rbacRoleId", res.body.id);
+  }
+}
+
+tests {
+  test("creates a mutable custom role", function() {
+    expect(res.status).to.equal(201);
+    expect(res.body).to.include({
+      name: bru.getVar("rbacRoleName"),
+      isSystem: false,
+    });
+    expect(res.body.permissions).to.be.an("array").that.is.empty;
+  });
+}

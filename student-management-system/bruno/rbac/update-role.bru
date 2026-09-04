@@ -1,0 +1,36 @@
+meta {
+  name: Update custom role
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/rbac/roles/{{rbacRoleId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "description": "Can manage students and enrollments"
+  }
+}
+
+tests {
+  test("updates the custom role", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.include({
+      id: bru.getVar("rbacRoleId"),
+      description: "Can manage students and enrollments",
+      isSystem: false,
+    });
+  });
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Delete enrollment student
+  type: http
+  seq: 13
+}
+
+delete {
+  url: {{baseUrl}}/students/{{enrollmentStudentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("deletes the enrollment student", function() {
+    expect(res.status).to.equal(204);
+  });
+}

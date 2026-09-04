@@ -1,0 +1,26 @@
+meta {
+  name: List students
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/students?page=1&limit=20&search=Bruno&sortBy=name&sortOrder=asc
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("returns a paginated student list", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.data).to.be.an("array");
+    expect(res.body.meta).to.include({ page: 1, limit: 20 });
+    expect(res.body.data.map((student) => student.id)).to.include(
+      bru.getVar("studentId"),
+    );
+  });
+}

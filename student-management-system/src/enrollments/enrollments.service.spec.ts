@@ -1,0 +1,165 @@
+import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import type { CourseResponse } from '../courses/course.select';
+import { Prisma } from '../generated/prisma/client';
+import type { PrismaService } from '../prisma/prisma.service';
+import type { StudentResponse } from '../students/student.select';
+import type {
+  EnrollmentDetailsResponse,
+  EnrollmentResponse,
+} from './enrollment.select';
+import { EnrollmentsService } from './enrollments.service';
+
+describe('EnrollmentsService', () => {
+  const studentId = '4d26ed6a-1f21-4df2-98cf-b79b7e214d0f';
+  const student: StudentResponse = {
+    id: studentId,
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+    dateOfBirth: new Date('2000-01-01T00:00:00.000Z'),
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+  const course: CourseResponse = {
+    id: '16a64c89-2ae6-460a-bf93-ff2121c59927',
+    name: 'Computer Science',
+    code: 'CS-101',
+    description: null,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+  const enrollment: EnrollmentResponse = {
+    id: '4a42535d-9fd9-4901-bb8f-74ca0cd25a32',
+    studentId,
+    courseId: course.id,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+  const enrollmentDetails: EnrollmentDetailsResponse = {
+    ...enrollment,
+    student,
+    course,
+  };
+  const createEnrollment = jest.fn<() => Promise<EnrollmentResponse>>();
+  const deleteEnrollment = jest.fn<() => Promise<EnrollmentResponse>>();
+  const findEnrollments = jest.fn<() => Promise<EnrollmentDetailsResponse[]>>();
+  const countEnrollments = jest.fn<() => Promise<number>>();
+  const transaction = jest.fn((operations: Promise<unknown>[]) =>
+    Promise.all(operations),
+  );
+  const findStudent = jest.fn<
+    () => Promise<{
+      enrollments: { course: CourseResponse }[];
+      _count: { enrollments: number };
+    } | null>
+  >();
+  const prisma = {
+    enrollment: {
+      create: createEnrollment,
+      delete: deleteEnrollment,
+      findMany: findEnrollments,
+      count: countEnrollments,
+    },
+    student: { findUnique: findStudent },
+    $transaction: transaction,
+  } as unknown as PrismaService;
+  const service = new EnrollmentsService(prisma);
+  let logSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+  });
+
+  it('creates an enrollment', async () => {
+    createEnrollment.mockResolvedValue(enrollment);
+
+    await expect(
+      service.create({ studentId, courseId: course.id }),
+    ).resolves.toEqual(enrollment);
+    expect(logSpy).toHaveBeenCalledWith({
+      event: 'enrollment.created',
+      enrollmentId: enrollment.id,
+      studentId,
+      courseId: course.id,
+    });
+  });
+
+  it('rejects duplicate enrollments', async () => {
+    createEnrollment.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '7.10.0',
+      }),
+    );
+
+    await expect(
+      service.create({ studentId, courseId: course.id }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('lists enrollments filtered by student with related records', async () => {
+    findEnrollments.mockResolvedValue([enrollmentDetails]);
+    countEnrollments.mockResolvedValue(1);
+
+    await expect(
+      service.findAll({ page: 1, limit: 20, studentId }),
+    ).resolves.toEqual({
+      data: [enrollmentDetails],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    expect(findEnrollments).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { studentId } }),
+    );
+    expect(countEnrollments).toHaveBeenCalledWith({ where: { studentId } });
+  });
+
+  it('returns all courses of a student with pagination metadata', async () => {
+    findStudent.mockResolvedValue({
+      enrollments: [{ course }],
+      _count: { enrollments: 1 },
+    });
+
+    await expect(
+      service.findCoursesByStudent(studentId, { page: 1, limit: 20 }),
+    ).resolves.toEqual({
+      data: [course],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+  });
+
+  it('returns not found for an unknown student', async () => {
+    findStudent.mockResolvedValue(null);
+
+    await expect(
+      service.findCoursesByStudent(studentId, { page: 1, limit: 20 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('maps a missing relation to not found', async () => {
+    createEnrollment.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Foreign key failed', {
+        code: 'P2003',
+        clientVersion: '7.10.0',
+      }),
+    );
+
+    await expect(
+      service.create({ studentId, courseId: course.id }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs a successful enrollment removal', async () => {
+    deleteEnrollment.mockResolvedValue(enrollment);
+
+    await service.remove(enrollment.id);
+
+    expect(logSpy).toHaveBeenCalledWith({
+      event: 'enrollment.deleted',
+      enrollmentId: enrollment.id,
+    });
+  });
+});

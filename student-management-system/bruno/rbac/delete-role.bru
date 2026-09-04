@@ -1,0 +1,21 @@
+meta {
+  name: Delete custom role
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/rbac/roles/{{rbacRoleId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("deletes the unassigned custom role", function() {
+    expect(res.status).to.equal(204);
+  });
+}

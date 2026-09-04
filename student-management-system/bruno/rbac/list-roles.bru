@@ -1,0 +1,36 @@
+meta {
+  name: List roles
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/rbac/roles
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:post-response {
+  if (res.status === 200 && Array.isArray(res.body)) {
+    const userRole = res.body.find((role) => role.name === "USER");
+    if (userRole?.id) {
+      bru.setVar("systemUserRoleId", userRole.id);
+    }
+  }
+}
+
+tests {
+  test("returns the role catalog", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+  });
+
+  test("contains the system USER role", function() {
+    const userRole = res.body.find((role) => role.name === "USER");
+    expect(userRole).to.include({ name: "USER", isSystem: true });
+  });
+}

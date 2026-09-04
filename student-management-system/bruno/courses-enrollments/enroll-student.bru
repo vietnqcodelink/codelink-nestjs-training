@@ -1,0 +1,42 @@
+meta {
+  name: Enroll student
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/enrollments
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "studentId": "{{enrollmentStudentId}}",
+    "courseId": "{{courseId}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body?.id) {
+    bru.setVar("enrollmentId", res.body.id);
+  }
+}
+
+tests {
+  test("enrolls the student", function() {
+    expect(res.status).to.equal(201);
+    expect(res.body).to.include({
+      studentId: bru.getVar("enrollmentStudentId"),
+      courseId: bru.getVar("courseId")
+    });
+  });
+}

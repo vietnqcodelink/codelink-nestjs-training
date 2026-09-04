@@ -1,0 +1,21 @@
+meta {
+  name: Delete course
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/courses/{{courseId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("deletes the course", function() {
+    expect(res.status).to.equal(204);
+  });
+}
